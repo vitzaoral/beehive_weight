@@ -27,3 +27,6 @@ struct Settings
 
 ### In development 🚧
 You should consider getting into the details of strain-gauge load cell sensors when expecting reasonable results. The range of topics is from sufficient and stable power supply, using the proper excitation voltage to the Seebeck effect and temperature compensation. See also [Bodge HX711 library](https://github.com/bogde/HX711).
+
+### Schema:
+![Schema](https://github.com/vitzaoral/beehive_weight/blob/master/schema/schema.png)
