@@ -16,9 +16,8 @@
 // https://community.hiveeyes.org/t/temperature-compensation-for-hx711-and-or-load-cell/1601/4
 
 // HX711 circuit wiring
-// TODO: jine piny at neblika LED dioda
-const int LOADCELL_DOUT_PIN = D3;
-const int LOADCELL_SCK_PIN = D4;
+const int LOADCELL_DOUT_PIN = D1;
+const int LOADCELL_SCK_PIN = D2;
 
 // 5 minutes
 const double DEEP_SLEEP_TIME = 300e6;
@@ -148,8 +147,12 @@ void setup()
   if (scale.is_ready())
   {
     // Sencor SBS 113L
-    scale.set_scale(22336.f);
-    float value = scale.get_units(10) + 0.62;
+    // scale.set_scale(22336.f);
+    // float value = scale.get_units(10) + 0.62;
+
+    // A
+    scale.set_scale(22194.6);
+    float value = scale.get_units(10) + 8.37;
 
     Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
     Blynk.virtualWrite(V1, value);
