@@ -49,10 +49,18 @@ BLYNK_WRITE(V3)
     terminal.println("CLEARED");
     terminal.flush();
   }
+  if (String("restart") == valueFromTerminal)
+  {
+    terminal.clear();
+    terminal.println("RESTART");
+    terminal.flush();
+    delay(500);
+    ESP.restart();
+  }
   else if (String("update") == valueFromTerminal)
   {
     terminal.clear();
-    terminal.println("Start OTA enabled");
+    terminal.println("UPDATE");
     terminal.flush();
     startOTA = true;
   }
@@ -75,13 +83,8 @@ void checkForUpdates()
   HTTPClient httpClient;
   WiFiClient client;
 
-  if (!client.connected())
-  {
-    Serial.print("No iternet connection for update..");
-    return;
-  }
-
   httpClient.begin(client, fwVersionURL);
+
   int httpCode = httpClient.GET();
 
   if (httpCode == 200)
@@ -154,12 +157,15 @@ void setup()
     scale.set_scale(22194.6);
     float value = scale.get_units(10) + 8.37;
 
+    Serial.println("average:\t" + String(value) + " kg");
+    Serial.println("Sending to Blynk");
+
     Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
     Blynk.virtualWrite(V1, value);
     Blynk.virtualWrite(V2, WiFi.RSSI());
     Blynk.virtualWrite(V4, settings.version);
 
-    Serial.println("average:\t" + String(value) + " kg");
+    Serial.println("Sent OK");
   }
   else
   {
@@ -176,6 +182,8 @@ void setup()
   }
 
   Blynk.disconnect();
+
+  Serial.println("Go sleep, BYE.");
   ESP.deepSleep(DEEP_SLEEP_TIME);
 }
 
