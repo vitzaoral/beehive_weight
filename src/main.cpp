@@ -150,17 +150,24 @@ void setup()
   if (scale.is_ready())
   {
     // Sencor SBS 113L
-    // scale.set_scale(22336.f);
-    // float value = scale.get_units(10) + 0.62;
 
     // A
-    scale.set_scale(22194.6);
-    float value = scale.get_units(10) + 8.37;
+    // scale.set_scale(22194.6);
+    // float value = scale.get_units(10) + 8.37;
+
+    // B
+    //scale.set_scale(22500);
+    //float value = scale.get_units(10) + 18.45;
+
+    // C
+    scale.set_scale(22500);
+    float value = scale.get_units(10) + 0.9;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
 
     Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
+
     Blynk.virtualWrite(V1, value);
     Blynk.virtualWrite(V2, WiFi.RSSI());
     Blynk.virtualWrite(V4, settings.version);
