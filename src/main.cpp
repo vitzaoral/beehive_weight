@@ -145,23 +145,23 @@ void setup()
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   scale.power_up();
 
-  delay(100);
+  delay(300);
 
   if (scale.is_ready())
   {
     // Sencor SBS 113L
 
     // A
-    // scale.set_scale(22194.6);
-    // float value = scale.get_units(10) + 8.37;
+    scale.set_scale(22194.6);
+    float value = scale.get_units(10) + 8.37;
 
     // B
     //scale.set_scale(22500);
     //float value = scale.get_units(10) + 18.45;
 
     // C
-    scale.set_scale(22500);
-    float value = scale.get_units(10) + 0.9;
+    //scale.set_scale(22500);
+    //float value = scale.get_units(10) + 0.9;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
@@ -171,12 +171,18 @@ void setup()
     Blynk.virtualWrite(V1, value);
     Blynk.virtualWrite(V2, WiFi.RSSI());
     Blynk.virtualWrite(V4, settings.version);
+    Blynk.virtualWrite(V5, "OK");
 
     Serial.println("Sent OK");
   }
   else
   {
     Serial.println("HX711 doesn't work");
+    Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
+
+    Blynk.virtualWrite(V2, WiFi.RSSI());
+    Blynk.virtualWrite(V4, settings.version);
+    Blynk.virtualWrite(V5, "HX711 doesn't work");
   }
 
   scale.power_down();
