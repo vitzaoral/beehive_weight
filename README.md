@@ -23,7 +23,7 @@ struct Settings
 
 * *ESP32 WROOM-32* or *WEMOS D1 Mini*
 * [HX711](https://www.aliexpress.com/wholesale?SearchText=hx711)
-* *Sencor SBS 113L* or some other load cells
+* *Sencor SBS 113SL* or some other load cells
 
 ### In development 🚧
 You should consider getting into the details of strain-gauge load cell sensors when expecting reasonable results. The range of topics is from sufficient and stable power supply, using the proper excitation voltage to the Seebeck effect and temperature compensation. See also [Bodge HX711 library](https://github.com/bogde/HX711).
