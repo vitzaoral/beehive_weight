@@ -1,16 +1,16 @@
 # Bee hive weight monitoring with ESP8266 or ESP32
 Bee hive weight monitoring. 
 Based on [Bodge HX711 library](https://github.com/bogde/HX711).
-In development.. 🚧 
+Data are sent to the Blynk.
 
 > To build a project, you need to download all the necessary libraries and create the *settings.cpp* file in the *src* folder:
 ```c++
 // Project settings
 struct Settings
 {
-    const char *wifiSSID = "YYY";
-    const char *wifiPassword = "ZZZ";
-    const char *blynkAuth = "WWW";
+    const char *wifiSSID = "wifi";
+    const char *wifiPassword = "pswd";
+    const char *blynkAuth = "blynkAuth";
     const char *version = "1.0.0";
     const char *firmwareVersionUrl = "http://example.com/version.txt";
     const char *firmwareBinUrl = "http://example.com/firmware.bin";
@@ -30,3 +30,11 @@ You should consider getting into the details of strain-gauge load cell sensors w
 
 ### Schema:
 ![Schema](https://github.com/vitzaoral/beehive_weight/blob/master/schema/schema.png)
+
+### Blynk:
+![Schema](https://github.com/vitzaoral/beehive_weight/blob/master/schema/blynk.jpeg)
+
+### Outside:
+![Schema](https://github.com/vitzaoral/beehive_weight/blob/master/schema/1.jpeg)
+![Schema](https://github.com/vitzaoral/beehive_weight/blob/master/schema/2.jpeg)
+![Schema](https://github.com/vitzaoral/beehive_weight/blob/master/schema/3.jpeg)
