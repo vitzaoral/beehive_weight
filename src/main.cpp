@@ -4,6 +4,7 @@
 #include <ESP8266HTTPClient.h>
 #include <ESP8266httpUpdate.h>
 #include <BlynkSimpleEsp8266.h>
+#include <EEPROM.h>
 #include "../src/settings.cpp"
 
 // https://github.com/bogde/HX711
@@ -19,8 +20,8 @@
 const int LOADCELL_DOUT_PIN = D1;
 const int LOADCELL_SCK_PIN = D2;
 
-// 5 minutes
-const double DEEP_SLEEP_TIME = 300e6;
+// about 5 minutes
+const double DEEP_SLEEP_TIME = 293e6;
 
 Settings settings;
 
@@ -28,6 +29,9 @@ HX711 scale;
 
 // start OTA update process
 bool startOTA = false;
+
+// alarm when difference between last two measurements is 1 kg
+#define WEIGHT_DECREASE_LIMIT 1
 
 // Attach Blynk virtual serial terminal
 WidgetTerminal terminal(V3);
@@ -147,17 +151,19 @@ void setup()
 
   delay(300);
 
+  EEPROM.begin(512);
+
   if (scale.is_ready())
   {
     // Sencor SBS 113L
 
     // A
-    scale.set_scale(22194.6);
-    float value = scale.get_units(10) + 8.37;
+    //scale.set_scale(22194.6);
+    //float value = scale.get_units(10) + 8.37;
 
     // B
-    //scale.set_scale(22500);
-    //float value = scale.get_units(10) + 18.45;
+    scale.set_scale(22500);
+    float value = scale.get_units(10) + 18.45;
 
     // C
     //scale.set_scale(22500);
@@ -174,6 +180,20 @@ void setup()
     Blynk.virtualWrite(V5, "OK");
 
     Serial.println("Sent OK");
+
+    float previousValue = 0.00f;
+    EEPROM.get(0, previousValue);
+    EEPROM.put(0, value);
+    EEPROM.commit();
+
+    float difference = value - previousValue;
+    Blynk.virtualWrite(V6, difference);
+
+    // notify when diffence from last measuring is bigger than limit
+    if (difference < 0 && abs(difference) > WEIGHT_DECREASE_LIMIT)
+    {
+      Blynk.notify("Pozor: náhlý váhový rozdíl " + String(difference) + "Kg");
+    }
   }
   else
   {
@@ -195,6 +215,8 @@ void setup()
   }
 
   Blynk.disconnect();
+
+  EEPROM.end();
 
   Serial.println("Go sleep, BYE.");
   ESP.deepSleep(DEEP_SLEEP_TIME);

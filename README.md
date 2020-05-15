@@ -18,6 +18,7 @@ struct Settings
 ```
 ### Features
 * measuring the weight of the beehive
+* Sends push notification, when weight decrease between measuring is lower than 1Kg (detection of bee swarm)
 
 ### Currents list:
 
