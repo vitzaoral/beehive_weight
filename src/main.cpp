@@ -162,12 +162,12 @@ void setup()
     //float value = scale.get_units(10) + 8.37;
 
     // B
-    scale.set_scale(22500);
-    float value = scale.get_units(10) + 18.45;
+    //scale.set_scale(22500);
+    //float value = scale.get_units(10) + 18.45;
 
     // C
-    //scale.set_scale(22500);
-    //float value = scale.get_units(10) + 0.9;
+    scale.set_scale(22500);
+    float value = scale.get_units(10) + 0.9;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
@@ -192,7 +192,7 @@ void setup()
     // notify when diffence from last measuring is bigger than limit
     if (difference < 0 && abs(difference) > WEIGHT_DECREASE_LIMIT)
     {
-      Blynk.notify("Pozor: náhlý váhový rozdíl " + String(difference) + "Kg");
+      Blynk.notify("C: náhlý váhový rozdíl " + String(difference) + "Kg");
     }
   }
   else
