@@ -42,6 +42,15 @@ BLYNK_CONNECTED()
   Blynk.syncAll();
 }
 
+// device is enabled
+bool isEnabled = true;
+
+// Turn on/off
+BLYNK_WRITE(V0)
+{
+  isEnabled = param.asInt();
+}
+
 // Terminal input
 BLYNK_WRITE(V3)
 {
@@ -158,42 +167,46 @@ void setup()
     // Sencor SBS 113L
 
     // A
-    //scale.set_scale(22194.6);
-    //float value = scale.get_units(10) + 8.37;
+    scale.set_scale(22194.6);
+    float value = scale.get_units(10) + 8.37;
 
     // B
-    //scale.set_scale(22500);
-    //float value = scale.get_units(10) + 18.45;
+    // scale.set_scale(22500);
+    // float value = scale.get_units(10) + 18.45;
 
     // C
-    scale.set_scale(22500);
-    float value = scale.get_units(10) + 0.9;
+    // scale.set_scale(22500);
+    // float value = scale.get_units(10) + 0.9;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
 
     Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
 
-    Blynk.virtualWrite(V1, value);
+    if (isEnabled)
+    {
+      Blynk.virtualWrite(V1, value);
+
+      float previousValue = 0.00f;
+      EEPROM.get(0, previousValue);
+      EEPROM.put(0, value);
+      EEPROM.commit();
+
+      float difference = value - previousValue;
+      Blynk.virtualWrite(V6, difference);
+
+      // notify when diffence from last measuring is bigger than limit
+      if (difference < 0 && abs(difference) > WEIGHT_DECREASE_LIMIT)
+      {
+        Blynk.notify("C: náhlý váhový rozdíl " + String(difference) + "Kg");
+      }
+    }
+
     Blynk.virtualWrite(V2, WiFi.RSSI());
     Blynk.virtualWrite(V4, settings.version);
-    Blynk.virtualWrite(V5, "OK");
+    Blynk.virtualWrite(V5, isEnabled ? "OK" : "Váha je vypnuta.");
 
     Serial.println("Sent OK");
-
-    float previousValue = 0.00f;
-    EEPROM.get(0, previousValue);
-    EEPROM.put(0, value);
-    EEPROM.commit();
-
-    float difference = value - previousValue;
-    Blynk.virtualWrite(V6, difference);
-
-    // notify when diffence from last measuring is bigger than limit
-    if (difference < 0 && abs(difference) > WEIGHT_DECREASE_LIMIT)
-    {
-      Blynk.notify("C: náhlý váhový rozdíl " + String(difference) + "Kg");
-    }
   }
   else
   {
