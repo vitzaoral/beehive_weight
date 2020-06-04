@@ -167,21 +167,28 @@ void setup()
     // Sencor SBS 113L
 
     // A
-    scale.set_scale(22194.6);
-    float value = scale.get_units(10) + 8.37;
+    // scale.set_scale(22194.6);
+    // float value = scale.get_units(10) + 8.37;
 
     // B
     // scale.set_scale(22500);
     // float value = scale.get_units(10) + 18.45;
 
     // C
-    // scale.set_scale(22500);
-    // float value = scale.get_units(10) + 0.9;
+    scale.set_scale(22500);
+    float value = scale.get_units(10) + 0.9;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
 
     Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
+
+    // wait for blynk sync
+    delay(1000);
+
+    Blynk.virtualWrite(V2, WiFi.RSSI());
+    Blynk.virtualWrite(V4, settings.version);
+    Blynk.virtualWrite(V5, isEnabled ? "OK" : "Váha je vypnuta.");
 
     if (isEnabled)
     {
@@ -198,13 +205,9 @@ void setup()
       // notify when diffence from last measuring is bigger than limit
       if (difference < 0 && abs(difference) > WEIGHT_DECREASE_LIMIT)
       {
-        Blynk.notify("C: náhlý váhový rozdíl " + String(difference) + "Kg");
+        Blynk.notify("C: náhlý váhový rozdíl " + String(difference) + "Kg"); // C
       }
     }
-
-    Blynk.virtualWrite(V2, WiFi.RSSI());
-    Blynk.virtualWrite(V4, settings.version);
-    Blynk.virtualWrite(V5, isEnabled ? "OK" : "Váha je vypnuta.");
 
     Serial.println("Sent OK");
   }
