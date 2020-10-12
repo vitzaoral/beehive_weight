@@ -20,8 +20,9 @@
 const int LOADCELL_DOUT_PIN = D1;
 const int LOADCELL_SCK_PIN = D2;
 
-// about 5 minutes
-const double DEEP_SLEEP_TIME = 293e6;
+// about 5 minutes 293e6
+// about 20 minutes 1193e6
+const double DEEP_SLEEP_TIME = 1193e6;
 
 Settings settings;
 
