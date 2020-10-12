@@ -10,10 +10,12 @@ struct Settings
 {
     const char *wifiSSID = "wifi";
     const char *wifiPassword = "pswd";
-    const char *blynkAuth = "blynkAuth";
+    const char *blynkAuth = "blynkAuth"; // for each weight
     const char *version = "1.0.0";
-    const char *firmwareVersionUrl = "http://example.com/version.txt";
+    const char *firmwareVersionUrl = "http://example.com/version.txt"; 
     const char *firmwareBinUrl = "http://example.com/firmware.bin";
+    const double scale = 22500; // for each weight
+    const double offset = 0.9; // for each weight
 };
 ```
 ### Features

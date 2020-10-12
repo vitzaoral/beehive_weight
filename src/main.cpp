@@ -166,18 +166,8 @@ void setup()
   if (scale.is_ready())
   {
     // Sencor SBS 113L
-
-    // A
-    // scale.set_scale(22194.6);
-    // float value = scale.get_units(10) + 8.37;
-
-    // B
-    // scale.set_scale(22500);
-    // float value = scale.get_units(10) + 18.45;
-
-    // C
-    scale.set_scale(22500);
-    float value = scale.get_units(10) + 0.9;
+     scale.set_scale(settings.scale);
+     float value = scale.get_units(10) + settings.offset;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
