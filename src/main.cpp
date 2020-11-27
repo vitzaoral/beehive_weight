@@ -157,17 +157,30 @@ void setup()
   Serial.println("Initializing the scale");
 
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  delay(300);
   scale.power_up();
 
-  delay(300);
-
+  delay(1000);
   EEPROM.begin(512);
+
+  bool secondChange = false;
+
+  if (!scale.is_ready())
+  {
+    secondChange = true;
+    scale.power_down();
+    delay(1000);
+    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+    delay(300);
+    scale.power_up();
+    delay(1000);
+  }
 
   if (scale.is_ready())
   {
     // Sencor SBS 113L
-     scale.set_scale(settings.scale);
-     float value = scale.get_units(10) + settings.offset;
+    scale.set_scale(settings.scale);
+    float value = scale.get_units(10) + settings.offset;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
@@ -179,7 +192,7 @@ void setup()
 
     Blynk.virtualWrite(V2, WiFi.RSSI());
     Blynk.virtualWrite(V4, settings.version);
-    Blynk.virtualWrite(V5, isEnabled ? "OK" : "Váha je vypnuta.");
+    Blynk.virtualWrite(V5, isEnabled ? (secondChange ? "OK 2 pokusy" : "OK") : "Váha je vypnuta.");
 
     if (isEnabled)
     {
@@ -209,7 +222,7 @@ void setup()
 
     Blynk.virtualWrite(V2, WiFi.RSSI());
     Blynk.virtualWrite(V4, settings.version);
-    Blynk.virtualWrite(V5, "HX711 doesn't work");
+    Blynk.virtualWrite(V5, "HX711 nefunguje." + String(secondChange ? " 2 pokusy" : ""));
   }
 
   scale.power_down();
