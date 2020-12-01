@@ -16,6 +16,7 @@ struct Settings
     const char *firmwareBinUrl = "http://example.com/firmware.bin";
     const double scale = 22500; // for each weight
     const double offset = 0.9; // for each weight
+    const char *notificationWightLoss = "A: náhlý váhový rozdíl "; // for each weight
 };
 ```
 ### Features

@@ -209,7 +209,7 @@ void setup()
       // notify when diffence from last measuring is bigger than limit
       if (difference < 0 && abs(difference) > WEIGHT_DECREASE_LIMIT)
       {
-        Blynk.notify("C: náhlý váhový rozdíl " + String(difference) + "Kg"); // C
+        Blynk.notify(String(settings.notificationWightLoss) + String(difference) + "Kg");
       }
     }
 
