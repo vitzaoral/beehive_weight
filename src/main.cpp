@@ -22,7 +22,7 @@ const int LOADCELL_SCK_PIN = D2;
 
 // about 5 minutes 293e6
 // about 20 minutes 1193e6
-const double DEEP_SLEEP_TIME = 1193e6;
+const double DEEP_SLEEP_TIME = 293e6;
 
 Settings settings;
 
@@ -180,7 +180,7 @@ void setup()
   {
     // Sencor SBS 113L
     scale.set_scale(settings.scale);
-    float value = scale.get_units(10) + settings.offset;
+    float value = abs(scale.get_units(10)) + settings.offset;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
