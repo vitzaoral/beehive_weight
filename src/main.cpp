@@ -180,7 +180,14 @@ void setup()
   {
     // Sencor SBS 113L
     scale.set_scale(settings.scale);
-    float value = abs(scale.get_units(10)) + settings.offset;
+
+    float average = scale.get_units(10);
+    if (average < 0)
+    {
+      average = average * -1;
+    }
+
+    float value = average + settings.offset;
 
     Serial.println("average:\t" + String(value) + " kg");
     Serial.println("Sending to Blynk");
@@ -220,9 +227,22 @@ void setup()
     Serial.println("HX711 doesn't work");
     Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
 
-    Blynk.virtualWrite(V2, WiFi.RSSI());
+    Serial.println("Connect blynk");
+
+    int rssi = WiFi.RSSI();
+    Blynk.virtualWrite(V2, rssi);
     Blynk.virtualWrite(V4, settings.version);
-    Blynk.virtualWrite(V5, "HX711 nefunguje." + String(secondChange ? " 2 pokusy" : ""));
+
+    if (secondChange)
+    {
+      Blynk.virtualWrite(V5, "HX711 nefunguje. 2. pokus");
+    }
+    else
+    {
+      Blynk.virtualWrite(V5, "HX711 nefunguje.");
+    }
+
+    Serial.println("Blynk send");
   }
 
   scale.power_down();
