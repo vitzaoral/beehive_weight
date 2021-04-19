@@ -190,7 +190,7 @@ void setup()
 
     // float value = average + settings.offset;
 
-    // formula D, E
+    // formula E, F
     float value = scale.get_units(10) + settings.offset;
     if (value < 0)
     {
@@ -198,9 +198,36 @@ void setup()
     }
 
     Serial.println("average:\t" + String(value) + " kg");
-    Serial.println("Sending to Blynk");
+    
+    int connAttempts = 0;
+    Serial.println("\r\nTry connecting to: " + String(settings.wifiSSID));
 
-    Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
+    WiFi.begin(settings.wifiSSID, settings.wifiPassword);
+    
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+        if (connAttempts > 30)
+        {
+            Serial.println("Error - couldn't connect to WIFI");
+            break;
+        }
+
+        connAttempts++;
+    }
+
+    Blynk.config(settings.blynkAuth);
+    Blynk.connect(2000);
+
+    if (Blynk.connected())
+    {
+      Serial.println("WiFI connected OK");
+    }
+    else
+    {
+      Serial.println("No WIFI !");
+    }
 
     // wait for blynk sync
     delay(1000);
@@ -228,7 +255,10 @@ void setup()
       }
     }
 
-    Serial.println("Sent OK");
+    if (Blynk.connected())
+    {
+      Serial.println("Sent OK");
+    }
   }
   else
   {
@@ -262,7 +292,17 @@ void setup()
     checkForUpdates();
   }
 
-  Blynk.disconnect();
+  if (WiFi.isConnected())
+    {
+        Blynk.disconnect();
+        WiFi.disconnect(true);
+
+        Serial.println("Disconnected OK");
+    }
+    else
+    {
+        Serial.println("Already disconnected");
+    }
 
   EEPROM.end();
 
