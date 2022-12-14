@@ -3,6 +3,9 @@ Bee hive weight monitoring.
 Based on [Bodge HX711 library](https://github.com/bogde/HX711).
 Data are sent to the Blynk.
 
+## 🚀 12.2022 - UPDATE TO BLYNK 2.0 🚀
+Project was updated to the new version of [Blynk 2.0](https://docs.blynk.io/en/)
+
 > To build a project, you need to download all the necessary libraries and create the *settings.cpp* file in the *src* folder:
 ```c++
 // Project settings
@@ -12,11 +15,8 @@ struct Settings
     const char *wifiPassword = "pswd";
     const char *blynkAuth = "blynkAuth"; // for each weight
     const char *version = "1.0.0";
-    const char *firmwareVersionUrl = "http://example.com/version.txt"; 
-    const char *firmwareBinUrl = "http://example.com/firmware.bin";
     const double scale = 22500; // for each weight
     const double offset = 0.9; // for each weight
-    const char *notificationWightLoss = "A: náhlý váhový rozdíl "; // for each weight
 };
 ```
 ### Features

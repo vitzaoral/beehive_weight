@@ -1,3 +1,8 @@
+#define BLYNK_PRINT Serial
+#define BLYNK_TEMPLATE_ID "TMPLkxFvg8yn"
+#define BLYNK_DEVICE_NAME "Váhy včel"
+#define BLYNK_FIRMWARE_VERSION "2.0.2"
+
 #include <Arduino.h>
 #include "HX711.h"
 #include <ESP8266WiFi.h>
@@ -22,20 +27,55 @@ const int LOADCELL_SCK_PIN = D2;
 
 // about 5 minutes 293e6
 // about 20 minutes 1193e6
-const double DEEP_SLEEP_TIME = 293e6;
+// const double DEEP_SLEEP_TIME = 293e6;
+
+// Deep sleep interval in seconds
+int deep_sleep_interval = 285;
 
 Settings settings;
-
+WiFiClient client;
 HX711 scale;
-
-// start OTA update process
-bool startOTA = false;
-
-// alarm when difference between last two measurements is 1 kg
-#define WEIGHT_DECREASE_LIMIT 1
 
 // Attach Blynk virtual serial terminal
 WidgetTerminal terminal(V3);
+
+String overTheAirURL = "";
+
+BLYNK_WRITE(InternalPinOTA)
+{
+  Serial.println("OTA Started");
+  overTheAirURL = param.asString();
+  Serial.print("overTheAirURL = ");
+  Serial.println(overTheAirURL);
+
+  HTTPClient http;
+  http.begin(client, overTheAirURL);
+
+  t_httpUpdate_return ret = ESPhttpUpdate.update(client, overTheAirURL);
+  switch (ret)
+  {
+  case HTTP_UPDATE_FAILED:
+    Serial.println("[update] Update failed.");
+    break;
+  case HTTP_UPDATE_NO_UPDATES:
+    Serial.println("[update] Update no Update.");
+    break;
+  case HTTP_UPDATE_OK:
+    Serial.println("[update] Update ok."); // may not be called since we reboot the ESP
+    break;
+  }
+}
+
+// deep sleep interval in seconds
+BLYNK_WRITE(V8)
+{
+  if (param.asInt())
+  {
+    deep_sleep_interval = param.asInt();
+    Serial.println("Deep sleep interval was set to: " + String(deep_sleep_interval));
+    Blynk.virtualWrite(V7, String(deep_sleep_interval));
+  }
+}
 
 // Synchronize settings from Blynk server with device when internet is connected
 BLYNK_CONNECTED()
@@ -63,7 +103,7 @@ BLYNK_WRITE(V3)
     terminal.println("CLEARED");
     terminal.flush();
   }
-  if (String("restart") == valueFromTerminal)
+  if (String("restart") == valueFromTerminal || String("reset") == valueFromTerminal)
   {
     terminal.clear();
     terminal.println("RESTART");
@@ -71,84 +111,11 @@ BLYNK_WRITE(V3)
     delay(500);
     ESP.restart();
   }
-  else if (String("update") == valueFromTerminal)
-  {
-    terminal.clear();
-    terminal.println("UPDATE");
-    terminal.flush();
-    startOTA = true;
-  }
   else if (valueFromTerminal != "\n" || valueFromTerminal != "\r" || valueFromTerminal != "")
   {
     terminal.println(String("unknown command: ") + valueFromTerminal);
     terminal.flush();
   }
-}
-
-void checkForUpdates()
-{
-  String message = "";
-  String fwVersionURL = settings.firmwareVersionUrl;
-
-  Serial.println("Checking for firmware updates.");
-  Serial.print("Firmware version URL: ");
-  Serial.println(fwVersionURL);
-
-  HTTPClient httpClient;
-  WiFiClient client;
-
-  httpClient.begin(client, fwVersionURL);
-
-  int httpCode = httpClient.GET();
-
-  if (httpCode == 200)
-  {
-    String newFwVersion = httpClient.getString();
-
-    Serial.print("Current firmware version: ");
-    Serial.println(settings.version);
-    Serial.print("Available firmware version: ");
-    Serial.println(newFwVersion);
-
-    if (String(settings.version) != newFwVersion)
-    {
-      Serial.println("Preparing to update");
-
-      String fwImageURL = settings.firmwareBinUrl;
-      t_httpUpdate_return ret = ESPhttpUpdate.update(client, fwImageURL);
-
-      switch (ret)
-      {
-      case HTTP_UPDATE_OK:
-        message = "Successfuly updated!";
-        Serial.println(message);
-        break;
-      case HTTP_UPDATE_FAILED:
-        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-        message = "Update failed: " + String(ESPhttpUpdate.getLastErrorString());
-        break;
-
-      case HTTP_UPDATE_NO_UPDATES:
-        message = "No updates";
-        Serial.println(message);
-        break;
-      }
-    }
-    else
-    {
-      message = "Already on latest version";
-      Serial.println(message);
-    }
-  }
-  else
-  {
-    message = "Version check failed, http code: " + String(httpCode) + " ,message: " + httpClient.errorToString(httpCode);
-    Serial.println(message);
-  }
-  httpClient.end();
-
-  terminal.println(message);
-  terminal.flush();
 }
 
 void setup()
@@ -198,23 +165,23 @@ void setup()
     }
 
     Serial.println("average:\t" + String(value) + " kg");
-    
+
     int connAttempts = 0;
     Serial.println("\r\nTry connecting to: " + String(settings.wifiSSID));
 
     WiFi.begin(settings.wifiSSID, settings.wifiPassword);
-    
+
     while (WiFi.status() != WL_CONNECTED)
     {
-        delay(500);
-        Serial.print(".");
-        if (connAttempts > 30)
-        {
-            Serial.println("Error - couldn't connect to WIFI");
-            break;
-        }
+      delay(500);
+      Serial.print(".");
+      if (connAttempts > 30)
+      {
+        Serial.println("Error - couldn't connect to WIFI");
+        break;
+      }
 
-        connAttempts++;
+      connAttempts++;
     }
 
     Blynk.config(settings.blynkAuth);
@@ -238,6 +205,7 @@ void setup()
 
     if (isEnabled)
     {
+      Serial.println("ENABLED");
       Blynk.virtualWrite(V1, value);
 
       float previousValue = 0.00f;
@@ -247,12 +215,8 @@ void setup()
 
       float difference = value - previousValue;
       Blynk.virtualWrite(V6, difference);
-
-      // notify when diffence from last measuring is bigger than limit
-      if (difference < 0 && abs(difference) > WEIGHT_DECREASE_LIMIT)
-      {
-        Blynk.notify(String(settings.notificationWightLoss) + String(difference) + "Kg");
-      }
+    } else {
+      Serial.println("DISABLED");
     }
 
     if (Blynk.connected())
@@ -286,28 +250,22 @@ void setup()
   scale.power_down();
   delay(300);
 
-  if (startOTA)
-  {
-    startOTA = false;
-    checkForUpdates();
-  }
-
   if (WiFi.isConnected())
-    {
-        Blynk.disconnect();
-        WiFi.disconnect(true);
+  {
+    Blynk.disconnect();
+    WiFi.disconnect(true);
 
-        Serial.println("Disconnected OK");
-    }
-    else
-    {
-        Serial.println("Already disconnected");
-    }
+    Serial.println("Disconnected OK");
+  }
+  else
+  {
+    Serial.println("Already disconnected");
+  }
 
   EEPROM.end();
 
-  Serial.println("Go sleep, BYE.");
-  ESP.deepSleep(DEEP_SLEEP_TIME);
+  Serial.println("Go to sleep for " + String(deep_sleep_interval) + " seconds.");
+  ESP.deepSleep(deep_sleep_interval * 1000000);
 }
 
 void loop()
