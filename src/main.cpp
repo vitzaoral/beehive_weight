@@ -1,7 +1,7 @@
 #define BLYNK_PRINT Serial
 #define BLYNK_TEMPLATE_ID "TMPLkxFvg8yn"
-#define BLYNK_DEVICE_NAME "Váhy včel"
-#define BLYNK_FIRMWARE_VERSION "2.0.2"
+#define BLYNK_TEMPLATE_NAME "Váhy včel"
+#define BLYNK_FIRMWARE_VERSION "2.1.0"
 
 #include <Arduino.h>
 #include "HX711.h"
@@ -10,6 +10,9 @@
 #include <ESP8266httpUpdate.h>
 #include <BlynkSimpleEsp8266.h>
 #include <EEPROM.h>
+extern "C" {
+  #include <user_interface.h>
+}
 #include "../src/settings.cpp"
 
 // https://github.com/bogde/HX711
@@ -33,25 +36,17 @@ const int LOADCELL_SCK_PIN = D2;
 int deep_sleep_interval = 285;
 
 Settings settings;
-WiFiClient client;
 HX711 scale;
-
-// Attach Blynk virtual serial terminal
-WidgetTerminal terminal(V3);
-
-String overTheAirURL = "";
 
 BLYNK_WRITE(InternalPinOTA)
 {
   Serial.println("OTA Started");
-  overTheAirURL = param.asString();
+  String otaUrl = param.asString();
   Serial.print("overTheAirURL = ");
-  Serial.println(overTheAirURL);
+  Serial.println(otaUrl);
 
-  HTTPClient http;
-  http.begin(client, overTheAirURL);
-
-  t_httpUpdate_return ret = ESPhttpUpdate.update(client, overTheAirURL);
+  WiFiClient otaClient;
+  t_httpUpdate_return ret = ESPhttpUpdate.update(otaClient, otaUrl);
   switch (ret)
   {
   case HTTP_UPDATE_FAILED:
@@ -80,7 +75,7 @@ BLYNK_WRITE(V8)
 // Synchronize settings from Blynk server with device when internet is connected
 BLYNK_CONNECTED()
 {
-  Blynk.syncAll();
+  Blynk.syncVirtual(V0, V8);
 }
 
 // device is enabled
@@ -92,77 +87,98 @@ BLYNK_WRITE(V0)
   isEnabled = param.asInt();
 }
 
-// Terminal input
-BLYNK_WRITE(V3)
-{
-  String valueFromTerminal = param.asStr();
-
-  if (String("clear") == valueFromTerminal)
-  {
-    terminal.clear();
-    terminal.println("CLEARED");
-    terminal.flush();
-  }
-  if (String("restart") == valueFromTerminal || String("reset") == valueFromTerminal)
-  {
-    terminal.clear();
-    terminal.println("RESTART");
-    terminal.flush();
-    delay(500);
-    ESP.restart();
-  }
-  else if (valueFromTerminal != "\n" || valueFromTerminal != "\r" || valueFromTerminal != "")
-  {
-    terminal.println(String("unknown command: ") + valueFromTerminal);
-    terminal.flush();
-  }
-}
 
 void setup()
 {
   Serial.begin(115200);
   Serial.println("Initializing the scale");
 
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  delay(300);
-  scale.power_up();
-
-  delay(1000);
   EEPROM.begin(512);
 
-  bool secondChange = false;
+  // Rucne zkontrolovat jestli HX711 je pripojene pred volanim begin(),
+  // protoze begin() vola set_gain() -> read() -> wait_ready() coz je
+  // nekonecny loop a zpusobi WDT reset kdyz HX711 neni zapojene
+  pinMode(LOADCELL_DOUT_PIN, INPUT);
+  pinMode(LOADCELL_SCK_PIN, OUTPUT);
+  digitalWrite(LOADCELL_SCK_PIN, LOW);
+  delay(500);
 
-  if (!scale.is_ready())
+  bool hx711Present = false;
+  unsigned long startMs = millis();
+  while (millis() - startMs < 3000)
   {
-    secondChange = true;
-    scale.power_down();
-    delay(1000);
+    if (digitalRead(LOADCELL_DOUT_PIN) == LOW)
+    {
+      hx711Present = true;
+      break;
+    }
+    delay(10);
+  }
+
+  bool secondChance = false;
+  bool scaleReady = false;
+
+  if (hx711Present)
+  {
     scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
     delay(300);
     scale.power_up();
     delay(1000);
+    scaleReady = scale.wait_ready_timeout(3000);
+
+    if (!scaleReady)
+    {
+      secondChance = true;
+      scale.power_down();
+      delay(1000);
+      scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+      delay(300);
+      scale.power_up();
+      delay(1000);
+      yield();
+      scaleReady = scale.wait_ready_timeout(3000);
+    }
+  }
+  else
+  {
+    Serial.println("HX711 neni pripojene");
   }
 
-  if (scale.is_ready())
+  if (scaleReady)
   {
     // Sencor SBS 113L
     scale.set_scale(settings.scale);
+    delay(1000);
+    yield();
 
     // formula A. B. C
-    // float average = scale.get_units(10);
-    // if (average < 0)
-    // {
-    //   average = average * -1;
-    // }
-
-    // float value = average + settings.offset;
-
-    // formula E, F
-    float value = scale.get_units(10) + settings.offset;
-    if (value < 0)
+    // cte po jednom s yield() aby WDT neresetoval ESP
+    float sum = 0;
+    int validReadings = 0;
+    for (int i = 0; i < 10; i++)
     {
-      value = value * -1;
+      if (scale.wait_ready_timeout(1000))
+      {
+        sum += scale.get_units(1);
+        validReadings++;
+      }
+      yield();
     }
+
+    float average = (validReadings > 0) ? (sum / validReadings) : 0;
+    if (average < 0)
+    {
+      average = average * -1;
+    }
+
+    float value = average + settings.offset;
+
+    // // formula E, F
+    // float value = scale.get_units(10) + settings.offset;
+    // if (value < 0)
+    // {
+    //   value = value * -1;
+    // }
 
     Serial.println("average:\t" + String(value) + " kg");
 
@@ -201,7 +217,7 @@ void setup()
 
     Blynk.virtualWrite(V2, WiFi.RSSI());
     Blynk.virtualWrite(V4, settings.version);
-    Blynk.virtualWrite(V5, isEnabled ? (secondChange ? "OK 2 pokusy" : "OK") : "Váha je vypnuta.");
+    Blynk.virtualWrite(V5, isEnabled ? (secondChance ? "OK 2 pokusy" : "OK") : "Váha je vypnuta.");
 
     if (isEnabled)
     {
@@ -213,8 +229,24 @@ void setup()
       EEPROM.put(0, value);
       EEPROM.commit();
 
-      float difference = value - previousValue;
-      Blynk.virtualWrite(V6, difference);
+      // validace EEPROM - pri prvnim spusteni nebo poskozenych datech
+      bool validPrevious = !isnan(previousValue) && !isinf(previousValue) && previousValue > 0 && previousValue < 200;
+
+      if (validPrevious)
+      {
+        float difference = value - previousValue;
+        Blynk.virtualWrite(V6, difference);
+
+        // detekce rojeni - pokles vahy o vice nez 1 kg
+        if (difference < -1.0)
+        {
+          Blynk.logEvent("swarm_detected", String("Pokles váhy o ") + String(difference, 1) + " kg");
+        }
+      }
+      else
+      {
+        Blynk.virtualWrite(V6, 0);
+      }
     } else {
       Serial.println("DISABLED");
     }
@@ -227,7 +259,18 @@ void setup()
   else
   {
     Serial.println("HX711 doesn't work");
-    Blynk.begin(settings.blynkAuth, settings.wifiSSID, settings.wifiPassword);
+
+    // Pouzit lehci WiFi.begin + Blynk.config misto tezkeho Blynk.begin
+    WiFi.begin(settings.wifiSSID, settings.wifiPassword);
+    int connAttempts = 0;
+    while (WiFi.status() != WL_CONNECTED)
+    {
+      delay(500);
+      if (connAttempts > 30) break;
+      connAttempts++;
+    }
+    Blynk.config(settings.blynkAuth);
+    Blynk.connect(2000);
 
     Serial.println("Connect blynk");
 
@@ -235,7 +278,7 @@ void setup()
     Blynk.virtualWrite(V2, rssi);
     Blynk.virtualWrite(V4, settings.version);
 
-    if (secondChange)
+    if (secondChance)
     {
       Blynk.virtualWrite(V5, "HX711 nefunguje. 2. pokus");
     }
@@ -265,7 +308,7 @@ void setup()
   EEPROM.end();
 
   Serial.println("Go to sleep for " + String(deep_sleep_interval) + " seconds.");
-  ESP.deepSleep(deep_sleep_interval * 1000000);
+  system_deep_sleep_instant(deep_sleep_interval * 1000000UL);
 }
 
 void loop()
